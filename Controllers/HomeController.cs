@@ -34,7 +34,7 @@ namespace ShortestPathApp.Controllers
                 if (model.VertexCount == null || model.VertexCount < 2)
                 {
                     model.ErrorMessage = "Количество вершин должно быть ≥ 2";
-                    return View(model);
+                    return View("Index", model);
                 }
 
                 int n = model.VertexCount.Value;
@@ -43,7 +43,7 @@ namespace ShortestPathApp.Controllers
                 model.Target = n;
                 model.RawEdges = string.Join("\n", model.InputEdges.Select(e => $"{e.From},{e.To},{e.Weight}"));
                 model.GraphSvg = GenerateSvg(model.InputEdges, model.ShortestPathVertices);
-                return View(model);
+                return View("Index", model);
             }
 
             // Парсинг рёбер из textarea
@@ -53,9 +53,9 @@ namespace ShortestPathApp.Controllers
                 foreach (var line in lines)
                 {
                     var parts = line.Split(',', StringSplitOptions.RemoveEmptyEntries);
-                    if (parts.Length == 3 && 
-                        int.TryParse(parts[0].Trim(), out int from) && 
-                        int.TryParse(parts[1].Trim(), out int to) && 
+                    if (parts.Length == 3 &&
+                        int.TryParse(parts[0].Trim(), out int from) &&
+                        int.TryParse(parts[1].Trim(), out int to) &&
                         int.TryParse(parts[2].Trim(), out int weight))
                     {
                         model.InputEdges.Add(new Edge { From = from, To = to, Weight = weight });
@@ -66,7 +66,7 @@ namespace ShortestPathApp.Controllers
             if (!model.InputEdges.Any())
             {
                 model.ErrorMessage = "Граф пуст. Введите рёбра или сгенерируйте граф.";
-                return View(model);
+                return View("Index", model);
             }
 
             try
@@ -74,10 +74,10 @@ namespace ShortestPathApp.Controllers
                 var result = _pathService.RunBellmanFord(model.InputEdges, model.Source);
                 if (result.HasNegativeCycle)
                 {
-                    model.ErrorMessage = "⚠️ Обнаружен отрицательный цикл. Наикратчайший путь не определён.";
+                    model.ErrorMessage = "Обнаружен отрицательный цикл. Наикратчайший путь не определён.";
                     model.Result = result;
                     model.GraphSvg = GenerateSvg(model.InputEdges, model.ShortestPathVertices);
-                    return View(model);
+                    return View("Index", model);
                 }
 
                 model.Result = result;
@@ -101,11 +101,11 @@ namespace ShortestPathApp.Controllers
             }
             catch (Exception ex)
             {
-                model.ErrorMessage = $"❌ Ошибка: {ex.Message}";
+                model.ErrorMessage = $"Ошибка: {ex.Message}";
                 _logger.LogError(ex, "Ошибка вычисления пути");
             }
 
-            return View(model);
+            return View("Index", model);
         }
 
         private List<Edge> GenerateRandomGraph(int n)
@@ -162,8 +162,7 @@ namespace ShortestPathApp.Controllers
             var sb = new StringBuilder();
             double width = cols * spacing + offsetX * 2;
             double height = ((n - 1) / cols + 1) * spacing + offsetY * 2;
-            sb.Append($"<svg viewBox=\"0 0 {width} {height}\" xmlns=\"http://www.w3.org/2000/svg\" style=\"background:#000\">");
-
+            sb.Append($"<svg viewBox=\"0 0 {width} {height}\" xmlns=\"http://www.w3.org/2000/svg\" style=\"background:#fff\">");
             // Рёбра
             foreach (var e in edges)
             {
@@ -172,7 +171,7 @@ namespace ShortestPathApp.Controllers
                     var (x1, y1) = pos[e.From];
                     var (x2, y2) = pos[e.To];
                     bool isPath = pathSet.Contains((e.From, e.To));
-                    string stroke = isPath ? "#fff" : "#444";
+                    string stroke = isPath ? "#0066cc" : "#999";
                     string strokeWidth = isPath ? "3" : "1";
                     string strokeDash = isPath ? "stroke-dasharray:8,4;" : "";
                     sb.Append($"<line x1=\"{x1}\" y1=\"{y1}\" x2=\"{x2}\" y2=\"{y2}\" stroke=\"{stroke}\" stroke-width=\"{strokeWidth}\" style=\"{strokeDash}\" />");
@@ -180,17 +179,24 @@ namespace ShortestPathApp.Controllers
             }
 
             // Вершины
+                        // Отрисовка вершин
             foreach (var v in vertices.OrderBy(x => x))
             {
                 var (x, y) = pos[v];
                 bool onPath = pathVertices.Contains(v);
-                string fill = onPath ? "#fff" : "#1a1a1a";
-                string stroke = onPath ? "#fff" : "#666";
-                double r = n > 500 ? 6 : 10;
-                string textColor = fill == "#fff" ? "#000" : "#fff";
-                sb.Append($"<circle cx=\"{x}\" cy=\"{y}\" r=\"{r}\" fill=\"{fill}\" stroke=\"{stroke}\" stroke-width=\"{(onPath ? 3 : 1)}\" />");
-                if (n <= 500)
-                    sb.Append($"<text x=\"{x}\" y=\"{y}\" fill=\"{textColor}\" font-size=\"9\" font-family=\"monospace\" text-anchor=\"middle\" dominant-baseline=\"central\">{v}</text>");
+                
+                // Адаптивные размеры: чем больше вершин, тем компактнее элементы
+                double radius = n > 2000 ? 3 : (n > 500 ? 4 : (n > 100 ? 6 : 8));
+                double fontSize = n > 2000 ? 5 : (n > 500 ? 6 : (n > 100 ? 7 : 9));
+                
+                string fillColor = onPath ? "#0056b3" : "#ffffff";
+                string strokeColor = onPath ? "#003d80" : "#666666";
+                string textColor = onPath ? "#ffffff" : "#000000";
+
+                sb.Append($"<circle cx=\"{x}\" cy=\"{y}\" r=\"{radius}\" fill=\"{fillColor}\" stroke=\"{strokeColor}\" stroke-width=\"1.5\" />");
+                
+                // Выводим номера для ЛЮБОГО размера графа (ограничение n <= 500 убрано)
+                sb.Append($"<text x=\"{x}\" y=\"{y}\" fill=\"{textColor}\" font-size=\"{fontSize}\" font-family=\"sans-serif\" text-anchor=\"middle\" dominant-baseline=\"central\">{v}</text>");
             }
 
             sb.Append("</svg>");

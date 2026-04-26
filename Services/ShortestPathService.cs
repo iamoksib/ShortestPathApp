@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using ShortestPathApp.Models;
 
@@ -9,9 +10,11 @@ namespace ShortestPathApp.Services
     {
         public BellmanFordResult RunBellmanFord(List<Edge> inputEdges, int source)
         {
+            // ⏱️ Запускаем точный таймер для замера времени выполнения
+            var sw = Stopwatch.StartNew();
             var result = new BellmanFordResult();
 
-            // 1. Формируем неориентированный граф: каждое ребро добавляем в обе стороны
+            // 1. Формируем неориентированный граф (дублируем рёбра в обе стороны)
             var edges = new List<Edge>();
             var vertices = new HashSet<int>();
             foreach (var e in inputEdges)
@@ -22,12 +25,15 @@ namespace ShortestPathApp.Services
                 vertices.Add(e.To);
             }
 
+            result.VertexCount = vertices.Count;
+            result.OriginalEdgeCount = inputEdges.Count;
+
             if (!vertices.Contains(source))
                 throw new ArgumentException($"Стартовая вершина {source} отсутствует в графе.");
 
             int vertexCount = vertices.Count;
-            var dist = new Dictionary<int, int>();
-            var pred = new Dictionary<int, int>();
+            var dist = new Dictionary<int, int>(vertexCount);
+            var pred = new Dictionary<int, int>(vertexCount);
 
             foreach (var v in vertices)
             {
@@ -36,36 +42,52 @@ namespace ShortestPathApp.Services
             }
             dist[source] = 0;
 
-            // 2. Релаксация ребер |V|-1 раз
+            int edgeChecks = 0;
+            int successfulRelaxations = 0;
+
+            // 2. Релаксация рёбер (максимум |V|-1 итераций)
             for (int i = 0; i < vertexCount - 1; i++)
             {
+                bool changed = false;
                 foreach (var e in edges)
                 {
+                    edgeChecks++; // Считаем каждую проверку ребра
                     if (dist[e.From] != int.MaxValue && dist[e.From] + e.Weight < dist[e.To])
                     {
                         dist[e.To] = dist[e.From] + e.Weight;
                         pred[e.To] = e.From;
+                        successfulRelaxations++;
+                        changed = true;
                     }
                 }
+                
+                // 🚀 Оптимизация: если за полный проход ни одно расстояние не обновилось,
+                // значит кратчайшие пути уже найдены. Прерываем цикл досрочно.
+                if (!changed) break;
             }
 
             // 3. Проверка на отрицательный цикл
             foreach (var e in edges)
             {
+                edgeChecks++;
                 if (dist[e.From] != int.MaxValue && dist[e.From] + e.Weight < dist[e.To])
                 {
                     result.HasNegativeCycle = true;
+                    sw.Stop();
+                    result.ExecutionTimeMs = sw.Elapsed.TotalMilliseconds;
+                    result.TotalEdgeChecks = edgeChecks;
+                    result.SuccessfulRelaxations = successfulRelaxations;
                     return result;
                 }
             }
 
-            // 4. Формирование политик путей
+            // 4. Формирование политик путей (восстановление маршрутов)
             foreach (var v in vertices.OrderBy(v => v))
             {
                 if (v == source) continue;
                 if (dist[v] == int.MaxValue)
                 {
-                    result.PathPolicies.Add($"{source} -> ... -> {v} : unreachable");
+                    result.PathPolicies.Add($"{source} -> ... -> {v} : недостижимо");
                     continue;
                 }
 
@@ -82,8 +104,13 @@ namespace ShortestPathApp.Services
                 result.PathPolicies.Add($"{pathStr} : {dist[v]}");
             }
 
+            sw.Stop();
             result.Distances = dist;
             result.Predecessors = pred;
+            result.TotalEdgeChecks = edgeChecks;
+            result.SuccessfulRelaxations = successfulRelaxations;
+            result.ExecutionTimeMs = sw.Elapsed.TotalMilliseconds;
+
             return result;
         }
     }
