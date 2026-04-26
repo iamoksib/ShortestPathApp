@@ -11,17 +11,21 @@ namespace ShortestPathApp.ViewModels
         public int Target { get; set; } = 100;
         public int? VertexCount { get; set; }
         
-        // Результаты двух алгоритмов
-        public BellmanFordResult BellmanResult { get; set; }
+        // 1. Беллман-Форд (Последовательный)
+        public BellmanFordResult BellmanSeqResult { get; set; }
+        public List<int> BellmanSeqPath { get; set; } = new();
+        public string BellmanSeqSvg { get; set; } = "";
+
+        // 2. Беллман-Форд (Параллельный)
+        public BellmanFordResult BellmanParResult { get; set; }
+        public List<int> BellmanParPath { get; set; } = new();
+        public string BellmanParSvg { get; set; } = "";
+
+        // 3. Дейкстра
         public BellmanFordResult DijkstraResult { get; set; }
-        
-        public List<int> BellmanPath { get; set; } = new();
         public List<int> DijkstraPath { get; set; } = new();
-        
-        public string ErrorMessage { get; set; }
-        
-        // SVG для отрисовки
-        public string BellmanSvg { get; set; } = "";
         public string DijkstraSvg { get; set; } = "";
+
+        public string ErrorMessage { get; set; }
     }
 }

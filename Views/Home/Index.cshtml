@@ -1,165 +1,102 @@
 ﻿@model ShortestPathApp.ViewModels.GraphViewModel
-@{
-    Layout = null;
-}
+@{ Layout = null; }
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Сравнение алгоритмов: Беллман-Форд vs Дейкстра</title>
+    <title>Сравнение Алгоритмов (MVC)</title>
     <style>
-        :root { 
-            --bg: #ffffff; --fg: #111; --border: #ccc; --accent-bellman: #d9534f; --accent-dijkstra: #0056b3; 
-        }
+        :root { --bg: #fff; --fg: #111; --border: #ccc; --acc-seq: #d9534f; --acc-par: #28a745; --acc-dij: #0056b3; }
         body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; background: var(--bg); color: var(--fg); }
         .container { max-width: 1400px; margin: 0 auto; }
+        h1 { text-align: center; border-bottom: 2px solid var(--fg); padding-bottom: 10px; margin-bottom: 20px; }
         
-        h1 { text-align: center; border-bottom: 2px solid var(--fg); padding-bottom: 10px; }
-        
-        /* Форма ввода */
-        .input-panel { background: #f9f9f9; padding: 20px; border: 1px solid var(--border); margin-bottom: 20px; }
-        .form-row { display: flex; gap: 15px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
+        .input-panel { background: #f9f9f9; padding: 15px; border: 1px solid var(--border); margin-bottom: 20px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap; }
         button { background: #333; color: #fff; border: none; padding: 10px 20px; cursor: pointer; font-weight: bold; }
         button:hover { background: #555; }
-        textarea { width: 100%; height: 80px; font-family: monospace; }
+        input, textarea { padding: 5px; border: 1px solid #ccc; font-family: monospace; }
+        
+        .comparison-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+        
+        .algo-card { border: 1px solid var(--border); padding: 10px; background: #fff; }
+        .algo-header { font-weight: bold; font-size: 1.1em; margin-bottom: 10px; padding-bottom: 5px; border-bottom: 2px solid; text-align: center; }
+        
+        .seq-theme .algo-header { border-color: var(--acc-seq); color: var(--acc-seq); }
+        .par-theme .algo-header { border-color: var(--acc-par); color: var(--acc-par); }
+        .dij-theme .algo-header { border-color: var(--acc-dij); color: var(--acc-dij); }
 
-        /* Сетка сравнения */
-        .comparison-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr; /* Две равные колонки */
-            gap: 20px;
-        }
-        
-        .algo-card {
-            border: 1px solid var(--border);
-            padding: 15px;
-            background: #fff;
-        }
-        
-        .algo-header {
-            font-size: 1.2em;
-            font-weight: bold;
-            margin-bottom: 15px;
-            padding-bottom: 5px;
-            border-bottom: 2px solid;
-            text-align: center;
-        }
-        
-        .bellman-theme .algo-header { border-color: var(--accent-bellman); color: var(--accent-bellman); }
-        .dijkstra-theme .algo-header { border-color: var(--accent-dijkstra); color: var(--accent-dijkstra); }
+        .graph-box { border: 1px solid #eee; max-height: 350px; overflow: auto; margin-bottom: 10px; background: #fff; }
+        .metrics { font-size: 0.85em; background: #fafafa; padding: 8px; border: 1px solid #eee; margin-bottom: 10px; }
+        .metrics div { margin-bottom: 3px; display: flex; justify-content: space-between; }
+        .policy { font-family: monospace; font-size: 0.75em; max-height: 100px; overflow-y: auto; border: 1px solid #eee; padding: 5px; }
+        .path-info { font-weight: bold; margin-bottom: 10px; text-align: center; }
 
-        .graph-box { border: 1px solid #eee; background: #fff; max-height: 400px; overflow: auto; margin-bottom: 15px; }
-        
-        .metrics-list { font-size: 0.9em; background: #fafafa; padding: 10px; border: 1px solid #eee; margin-bottom: 10px; }
-        .metrics-list div { margin-bottom: 5px; display: flex; justify-content: space-between; }
-        
-        .policy-box { font-family: monospace; font-size: 0.8em; max-height: 150px; overflow-y: auto; border: 1px solid #eee; padding: 5px; }
-        
-        .error-box { background: #fee; color: #c00; padding: 10px; margin: 10px 0; border: 1px solid #fcc; }
-
-       @@media (max-width: 900px) {
-    .comparison-grid { grid-template-columns: 1fr; } /* На мобильных в одну колонку */
-}
+        @@media (max-width: 1000px) { .comparison-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Сравнительный анализ алгоритмов поиска пути</h1>
-
-        <!-- Панель ввода данных (общая для обоих) -->
+        <h1>Сравнительный анализ: Беллман-Форд vs Дейкстра</h1>
+        
         <form method="post" asp-controller="Home" asp-action="Calculate" class="input-panel">
-            <div class="form-row">
-                <label>Вершин:</label>
-                <input type="number" name="VertexCount" value="@(Model.VertexCount)" style="width:80px" />
-                <button type="submit" name="action" value="Generate">Сгенерировать граф</button>
-            </div>
-            <div class="form-row">
-                <label>От:</label> <input type="number" name="Source" value="@Model.Source" style="width:60px" />
-                <label>До:</label> <input type="number" name="Target" value="@Model.Target" style="width:60px" />
-            </div>
-            <textarea name="RawEdges" placeholder="Введите рёбра вручную (From,To,Weight)...">@Model.RawEdges</textarea>
-            <div style="margin-top:10px; text-align:right;">
-                <button type="submit" name="action" value="Calculate">Рассчитать оба алгоритма</button>
+            <label>Вершин:</label> <input type="number" name="VertexCount" value="@(Model.VertexCount)" style="width:70px" />
+            <button type="submit" name="action" value="Generate">Сгенерировать</button>
+            <input type="hidden" name="RawEdges" value="@Model.RawEdges" id="hiddenEdges" />
+            <div style="flex-grow:1; text-align:right;">
+                <button type="submit" name="action" value="Calculate" style="background:var(--acc-dij);">Рассчитать все</button>
             </div>
         </form>
+<textarea id="manualEdges" rows="2" style="width:100%; margin-bottom:15px;" 
+    placeholder="Или введи рёбра вручную: 1,2,5..." 
+    onchange="document.getElementById('hiddenEdges').value = this.value">@Model.RawEdges</textarea>
+        @if (!string.IsNullOrEmpty(Model.ErrorMessage)) { <div style="background:#fee; color:red; padding:10px; margin-bottom:15px; border:1px solid red;">@Model.ErrorMessage</div> }
 
-        @if (!string.IsNullOrEmpty(Model.ErrorMessage))
-        {
-            <div class="error-box">@Model.ErrorMessage</div>
-        }
-
-        <!-- Сетка сравнения -->
         <div class="comparison-grid">
-            
-            <!-- ЛЕВАЯ КОЛОНКА: Беллман-Форд -->
-            <div class="algo-card bellman-theme">
-                <div class="algo-header">Алгоритм Беллмана-Форда</div>
-                
-                @if (!string.IsNullOrEmpty(Model.BellmanSvg))
-                {
-                    <div class="graph-box">@Html.Raw(Model.BellmanSvg)</div>
-                    
-                    @if (Model.BellmanPath.Any())
-                    {
-                        <div style="font-weight:bold; color:var(--accent-bellman); margin-bottom:10px;">
-                            Путь: @string.Join(" → ", Model.BellmanPath) (Вес: @Model.BellmanResult?.Distances[Model.Target])
-                        </div>
-                    }
-
-                    <div class="metrics-list">
-                        <div><span>Время:</span> <b>@Model.BellmanResult?.ExecutionTimeMs.ToString("F2") мс</b></div>
-                        <div><span>Итераций:</span> <b>@Model.BellmanResult?.IterationsCount</b></div>
-                        <div><span>Проверок рёбер:</span> <b>@Model.BellmanResult?.TotalEdgeChecks</b></div>
-                        <div><span>Релаксаций:</span> <b>@Model.BellmanResult?.SuccessfulRelaxations</b></div>
+            <!-- 1. БЕЛЛМАН (ПОСЛЕДОВАТЕЛЬНЫЙ) -->
+            <div class="algo-card seq-theme">
+                <div class="algo-header">Беллман-Форд (Послед.)</div>
+                @if (!string.IsNullOrEmpty(Model.BellmanSeqSvg)) {
+                    <div class="graph-box">@Html.Raw(Model.BellmanSeqSvg)</div>
+                    <div class="path-info" style="color:var(--acc-seq)">Путь: @string.Join("→", Model.BellmanSeqPath) (Вес: @Model.BellmanSeqResult?.Distances[Model.Target])</div>
+                    <div class="metrics">
+                        <div><span>Время:</span> <b>@Model.BellmanSeqResult?.ExecutionTimeMs.ToString("F2") мс</b></div>
+                        <div><span>Итераций:</span> <b>@Model.BellmanSeqResult?.IterationsCount</b></div>
+                        <div><span>Рёбер проверено:</span> <b>@Model.BellmanSeqResult?.TotalEdgeChecks</b></div>
                     </div>
-
-                    <div class="policy-box">
-                        @if (Model.BellmanResult?.PathPolicies != null) {
-                            foreach(var p in Model.BellmanResult.PathPolicies) { <div>@p</div> }
-                        }
-                    </div>
-                }
-                else {
-                    <div style="text-align:center; padding:40px; color:#999;">Ожидание расчёта...</div>
+                    <div class="policy">@foreach(var p in Model.BellmanSeqResult?.PathPolicies ?? new List<string>()) { <div>@p</div> }</div>
                 }
             </div>
 
-            <!-- ПРАВАЯ КОЛОНКА: Дейкстра -->
-            <div class="algo-card dijkstra-theme">
-                <div class="algo-header">Алгоритм Дейкстры</div>
-                
-                @if (!string.IsNullOrEmpty(Model.DijkstraSvg))
-                {
+            <!-- 2. БЕЛЛМАН (ПАРАЛЛЕЛЬНЫЙ) -->
+            <div class="algo-card par-theme">
+                <div class="algo-header">Беллман-Форд (Паралл.)</div>
+                @if (!string.IsNullOrEmpty(Model.BellmanParSvg)) {
+                    <div class="graph-box">@Html.Raw(Model.BellmanParSvg)</div>
+                    <div class="path-info" style="color:var(--acc-par)">Путь: @string.Join("→", Model.BellmanParPath) (Вес: @Model.BellmanParResult?.Distances[Model.Target])</div>
+                    <div class="metrics">
+                        <div><span>Время:</span> <b>@Model.BellmanParResult?.ExecutionTimeMs.ToString("F2") мс</b></div>
+                        <div><span>Итераций:</span> <b>@Model.BellmanParResult?.IterationsCount</b></div>
+                        <div><span>Рёбер проверено:</span> <b>@Model.BellmanParResult?.TotalEdgeChecks</b></div>
+                    </div>
+                    <div class="policy">@foreach(var p in Model.BellmanParResult?.PathPolicies ?? new List<string>()) { <div>@p</div> }</div>
+                }
+            </div>
+
+            <!-- 3. ДЕЙКСТРА -->
+            <div class="algo-card dij-theme">
+                <div class="algo-header">Дейкстра</div>
+                @if (!string.IsNullOrEmpty(Model.DijkstraSvg)) {
                     <div class="graph-box">@Html.Raw(Model.DijkstraSvg)</div>
-                    
-                    @if (Model.DijkstraPath.Any())
-                    {
-                        <div style="font-weight:bold; color:var(--accent-dijkstra); margin-bottom:10px;">
-                            Путь: @string.Join(" → ", Model.DijkstraPath) (Вес: @Model.DijkstraResult?.Distances[Model.Target])
-                        </div>
-                    }
-
-                    <div class="metrics-list">
+                    <div class="path-info" style="color:var(--acc-dij)">Путь: @string.Join("→", Model.DijkstraPath) (Вес: @Model.DijkstraResult?.Distances[Model.Target])</div>
+                    <div class="metrics">
                         <div><span>Время:</span> <b>@Model.DijkstraResult?.ExecutionTimeMs.ToString("F2") мс</b></div>
-                        <div><span>Итераций (Вершин):</span> <b>@Model.DijkstraResult?.IterationsCount</b></div>
-                        <div><span>Проверок рёбер:</span> <b>@Model.DijkstraResult?.TotalEdgeChecks</b></div>
-                        <div><span>Релаксаций:</span> <b>@Model.DijkstraResult?.SuccessfulRelaxations</b></div>
+                        <div><span>Итераций:</span> <b>@Model.DijkstraResult?.IterationsCount</b></div>
+                        <div><span>Рёбер проверено:</span> <b>@Model.DijkstraResult?.TotalEdgeChecks</b></div>
                     </div>
-
-                    <div class="policy-box">
-                        @if (Model.DijkstraResult?.PathPolicies != null) {
-                            foreach(var p in Model.DijkstraResult.PathPolicies) { <div>@p</div> }
-                        }
-                    </div>
-                }
-                else {
-                     <div style="text-align:center; padding:40px; color:#999;">
-                        @(Model.InputEdges.Any() ? "Не рассчитан (возможно, есть отрицательные веса)" : "Ожидание расчёта...")
-                     </div>
+                    <div class="policy">@foreach(var p in Model.DijkstraResult?.PathPolicies ?? new List<string>()) { <div>@p</div> }</div>
                 }
             </div>
-
         </div>
     </div>
 </body>
