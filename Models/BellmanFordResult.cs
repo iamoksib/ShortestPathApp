@@ -15,5 +15,6 @@ namespace ShortestPathApp.Models
         public int TotalEdgeChecks { get; set; }
         public int SuccessfulRelaxations { get; set; }
         public double ExecutionTimeMs { get; set; }
+        public int IterationsCount { get; set; } 
     }
 }

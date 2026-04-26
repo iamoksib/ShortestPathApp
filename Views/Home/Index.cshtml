@@ -7,261 +7,160 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Алгоритм Беллмана-Форда</title>
+    <title>Сравнение алгоритмов: Беллман-Форд vs Дейкстра</title>
     <style>
-        /* Строгий светлый стиль для научной работы */
         :root { 
-            --bg: #ffffff; 
-            --fg: #111111; 
-            --border: #cccccc; 
-            --muted: #555555;
-            --accent: #0056b3; /* Строгий синий цвет */
-            --input-bg: #f8f9fa;
+            --bg: #ffffff; --fg: #111; --border: #ccc; --accent-bellman: #d9534f; --accent-dijkstra: #0056b3; 
         }
-        * { box-sizing: border-box; }
-        body { 
-            background: var(--bg); 
-            color: var(--fg); 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            margin: 0; 
-            padding: 30px; 
-            line-height: 1.6; 
-        }
-        .container { max-width: 1200px; margin: 0 auto; }
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; background: var(--bg); color: var(--fg); }
+        .container { max-width: 1400px; margin: 0 auto; }
         
-        h1 { 
-            font-size: 2rem;
-            border-bottom: 2px solid var(--fg); 
-            padding-bottom: 10px; 
-            margin-bottom: 30px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        h2 { 
-            font-size: 1.4rem;
-            border-bottom: 1px solid var(--border); 
-            padding-bottom: 8px; 
-            margin-top: 40px;
-            color: var(--accent);
-        }
-
-        .form-group { margin-bottom: 20px; }
-        .form-row { display: flex; gap: 15px; align-items: center; flex-wrap: wrap; }
+        h1 { text-align: center; border-bottom: 2px solid var(--fg); padding-bottom: 10px; }
         
-        label { 
-            font-weight: 600; 
-            display: inline-block;
-            width: 180px;
-        }
-        
-        input[type="number"], textarea, select {
-            background: var(--input-bg); 
-            color: var(--fg); 
-            border: 1px solid var(--border);
-            padding: 8px 10px; 
-            font-family: inherit; 
-            font-size: 14px;
-            border-radius: 4px;
-        }
-        input:focus, textarea:focus {
-            outline: none;
-            border-color: var(--accent);
-            box-shadow: 0 0 0 2px rgba(0, 86, 179, 0.1);
-        }
-        
-        button { 
-            cursor: pointer; 
-            font-weight: 600; 
-            background: var(--fg);
-            color: var(--bg);
-            border: none;
-            padding: 10px 25px;
-            text-transform: uppercase;
-            font-size: 0.9em;
-            letter-spacing: 0.5px;
-            transition: 0.2s;
-        }
-        button:hover { background: var(--accent); }
-        button:disabled { background: #ccc; cursor: not-allowed; }
+        /* Форма ввода */
+        .input-panel { background: #f9f9f9; padding: 20px; border: 1px solid var(--border); margin-bottom: 20px; }
+        .form-row { display: flex; gap: 15px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
+        button { background: #333; color: #fff; border: none; padding: 10px 20px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #555; }
+        textarea { width: 100%; height: 80px; font-family: monospace; }
 
-        textarea { 
-            width: 100%; 
-            min-height: 100px; 
-            resize: vertical; 
-            font-family: 'Courier New', monospace;
-        }
-
-        /* Зоны вывода результатов */
-        .error { 
-            border: 2px solid #d9534f; 
-            color: #d9534f; 
-            padding: 15px; 
-            margin: 20px 0; 
-            background: #fdf7f7;
-            font-weight: 500;
-        }
-        
-        .graph-box { 
-            border: 1px solid var(--border); 
-            overflow: auto; 
-            max-height: 700px; 
-            background: #fff;
-            padding: 10px;
-        }
-
-        .policy-list { 
-            border: 1px solid var(--border); 
-            padding: 15px; 
-            max-height: 400px; 
-            overflow-y: auto; 
-            background: #fafafa;
-            font-family: 'Courier New', monospace;
-            font-size: 13px;
-        }
-        .policy-item {
-            padding: 6px 0; 
-            border-bottom: 1px solid #eee;
-        }
-
-        .result-box {
-            background: #eef5fc;
-            border: 1px solid var(--accent);
-            padding: 15px;
-            margin: 20px 0;
-            font-weight: 600;
-        }
-        .metrics-grid {
+        /* Сетка сравнения */
+        .comparison-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 15px;
-            margin: 20px 0 30px 0;
-        }
-        .metric-card {
-            background: #f8f9fa;
-            border: 1px solid var(--border);
-            padding: 15px;
-            border-radius: 4px;
-            text-align: center;
-            transition: 0.2s;
-        }
-        .metric-card:hover {
-            border-color: var(--accent);
-            background: #fff;
-        }
-        .metric-label {
-            font-size: 0.8em;
-            color: var(--muted);
-            margin-bottom: 8px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            font-weight: 600;
-        }
-        .metric-value {
-            font-size: 1.4em;
-            font-weight: 700;
-            color: var(--accent);
-            font-family: 'Courier New', monospace;
-        }
-        .metric-note {
-            font-size: 0.75em;
-            color: var(--muted);
-            margin-top: 5px;
+            grid-template-columns: 1fr 1fr; /* Две равные колонки */
+            gap: 20px;
         }
         
-        .hint { font-size: 0.85em; color: var(--muted); font-style: italic; margin-top: 5px; display: block; }
+        .algo-card {
+            border: 1px solid var(--border);
+            padding: 15px;
+            background: #fff;
+        }
+        
+        .algo-header {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            padding-bottom: 5px;
+            border-bottom: 2px solid;
+            text-align: center;
+        }
+        
+        .bellman-theme .algo-header { border-color: var(--accent-bellman); color: var(--accent-bellman); }
+        .dijkstra-theme .algo-header { border-color: var(--accent-dijkstra); color: var(--accent-dijkstra); }
+
+        .graph-box { border: 1px solid #eee; background: #fff; max-height: 400px; overflow: auto; margin-bottom: 15px; }
+        
+        .metrics-list { font-size: 0.9em; background: #fafafa; padding: 10px; border: 1px solid #eee; margin-bottom: 10px; }
+        .metrics-list div { margin-bottom: 5px; display: flex; justify-content: space-between; }
+        
+        .policy-box { font-family: monospace; font-size: 0.8em; max-height: 150px; overflow-y: auto; border: 1px solid #eee; padding: 5px; }
+        
+        .error-box { background: #fee; color: #c00; padding: 10px; margin: 10px 0; border: 1px solid #fcc; }
+
+       @@media (max-width: 900px) {
+    .comparison-grid { grid-template-columns: 1fr; } /* На мобильных в одну колонку */
+}
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Алгоритм Беллмана-Форда</h1>
-        
-        <form method="post" asp-controller="Home" asp-action="Calculate">
-            <div class="form-group">
-                <label for="VertexCount">Генерация графа:</label>
-                <div class="form-row">
-                    <input type="number" id="VertexCount" name="VertexCount" placeholder="100, 1000, 10000" min="2" value="@(Model.VertexCount)" style="width: 150px;" />
-                    <button type="submit" name="action" value="Generate">Сгенерировать случайный граф</button>
-                </div>
-                <span class="hint">Генерирует связный граф с заданным количеством вершин.</span>
-            </div>
+        <h1>Сравнительный анализ алгоритмов поиска пути</h1>
 
-            <div class="form-group">
-                <label>Параметры пути:</label>
-                <div class="form-row">
-                    <span>Начальная вершина:</span>
-                    <input type="number" name="Source" value="1" style="width: 80px; text-align: center;" />
-                    <span>Конечная вершина:</span>
-                    <input type="number" name="Target" value="@(Model.Target)" style="width: 80px; text-align: center;" />
-                </div>
+        <!-- Панель ввода данных (общая для обоих) -->
+        <form method="post" asp-controller="Home" asp-action="Calculate" class="input-panel">
+            <div class="form-row">
+                <label>Вершин:</label>
+                <input type="number" name="VertexCount" value="@(Model.VertexCount)" style="width:80px" />
+                <button type="submit" name="action" value="Generate">Сгенерировать граф</button>
             </div>
-
-            <div class="form-group">
-                <label for="RawEdges">Ввод рёбер (вручную):</label>
-                <textarea id="RawEdges" name="RawEdges" placeholder="Формат: Из,В,Вес&#10;Пример:&#10;1,2,5&#10;2,3,3&#10;1,3,10">@Model.RawEdges</textarea>
-                <span class="hint">Вводите рёбра построчно. Граф считается неориентированным. Заменяет сгенерированный граф.</span>
+            <div class="form-row">
+                <label>От:</label> <input type="number" name="Source" value="@Model.Source" style="width:60px" />
+                <label>До:</label> <input type="number" name="Target" value="@Model.Target" style="width:60px" />
             </div>
-
-            <div class="form-group">
-                <button type="submit" name="action" value="Calculate">Рассчитать кратчайший путь</button>
+            <textarea name="RawEdges" placeholder="Введите рёбра вручную (From,To,Weight)...">@Model.RawEdges</textarea>
+            <div style="margin-top:10px; text-align:right;">
+                <button type="submit" name="action" value="Calculate">Рассчитать оба алгоритма</button>
             </div>
         </form>
 
         @if (!string.IsNullOrEmpty(Model.ErrorMessage))
         {
-            <div class="error">@Model.ErrorMessage</div>
+            <div class="error-box">@Model.ErrorMessage</div>
         }
 
-        @if (!string.IsNullOrEmpty(Model.GraphSvg))
-        {
-            <h2>Визуализация графа</h2>
-            <div class="graph-box">
-                @Html.Raw(Model.GraphSvg)
-            </div>
-
-            @if (Model.ShortestPathVertices.Any())
-            {
-                <div class="result-box">
-<div><strong>Найден кратчайший путь:</strong> @string.Join(" \u2192 ", Model.ShortestPathVertices)</div>                    <div style="margin-top:5px; font-weight:normal;"><strong>Общий вес (стоимость):</strong> @Model.Result?.Distances[Model.Target]</div>
-                </div>
-                        @if (Model.Result != null)
-        {
-            <h2>Метрики производительности</h2>
-            <div class="metrics-grid">
-                <div class="metric-card">
-                    <div class="metric-label">Время выполнения</div>
-                    <div class="metric-value">@Model.Result.ExecutionTimeMs.ToString("F2") мс</div>
-                    <div class="metric-note">Серверное время расчёта</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-label">Размерность графа</div>
-                    <div class="metric-value">V: @Model.Result.VertexCount | E: @Model.Result.OriginalEdgeCount</div>
-                    <div class="metric-note">Вершин / Исходных рёбер</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-label">Проверок рёбер</div>
-                    <div class="metric-value">@Model.Result.TotalEdgeChecks:N0</div>
-                    <div class="metric-note">Фактических обращений к рёбрам</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-label">Успешных релаксаций</div>
-                    <div class="metric-value">@Model.Result.SuccessfulRelaxations:N0</div>
-                    <div class="metric-note">Обновлений кратчайшего расстояния</div>
-                </div>
-            </div>
-        }
-            }
-
-            <h2>Политики маршрутизации (из вершины @Model.Source)</h2>
-            <div class="policy-list">
-                @if (Model.Result?.PathPolicies != null)
+        <!-- Сетка сравнения -->
+        <div class="comparison-grid">
+            
+            <!-- ЛЕВАЯ КОЛОНКА: Беллман-Форд -->
+            <div class="algo-card bellman-theme">
+                <div class="algo-header">Алгоритм Беллмана-Форда</div>
+                
+                @if (!string.IsNullOrEmpty(Model.BellmanSvg))
                 {
-                    foreach (var p in Model.Result.PathPolicies)
+                    <div class="graph-box">@Html.Raw(Model.BellmanSvg)</div>
+                    
+                    @if (Model.BellmanPath.Any())
                     {
-                        <div class="policy-item">@p</div>
+                        <div style="font-weight:bold; color:var(--accent-bellman); margin-bottom:10px;">
+                            Путь: @string.Join(" → ", Model.BellmanPath) (Вес: @Model.BellmanResult?.Distances[Model.Target])
+                        </div>
                     }
+
+                    <div class="metrics-list">
+                        <div><span>Время:</span> <b>@Model.BellmanResult?.ExecutionTimeMs.ToString("F2") мс</b></div>
+                        <div><span>Итераций:</span> <b>@Model.BellmanResult?.IterationsCount</b></div>
+                        <div><span>Проверок рёбер:</span> <b>@Model.BellmanResult?.TotalEdgeChecks</b></div>
+                        <div><span>Релаксаций:</span> <b>@Model.BellmanResult?.SuccessfulRelaxations</b></div>
+                    </div>
+
+                    <div class="policy-box">
+                        @if (Model.BellmanResult?.PathPolicies != null) {
+                            foreach(var p in Model.BellmanResult.PathPolicies) { <div>@p</div> }
+                        }
+                    </div>
+                }
+                else {
+                    <div style="text-align:center; padding:40px; color:#999;">Ожидание расчёта...</div>
                 }
             </div>
-        }
+
+            <!-- ПРАВАЯ КОЛОНКА: Дейкстра -->
+            <div class="algo-card dijkstra-theme">
+                <div class="algo-header">Алгоритм Дейкстры</div>
+                
+                @if (!string.IsNullOrEmpty(Model.DijkstraSvg))
+                {
+                    <div class="graph-box">@Html.Raw(Model.DijkstraSvg)</div>
+                    
+                    @if (Model.DijkstraPath.Any())
+                    {
+                        <div style="font-weight:bold; color:var(--accent-dijkstra); margin-bottom:10px;">
+                            Путь: @string.Join(" → ", Model.DijkstraPath) (Вес: @Model.DijkstraResult?.Distances[Model.Target])
+                        </div>
+                    }
+
+                    <div class="metrics-list">
+                        <div><span>Время:</span> <b>@Model.DijkstraResult?.ExecutionTimeMs.ToString("F2") мс</b></div>
+                        <div><span>Итераций (Вершин):</span> <b>@Model.DijkstraResult?.IterationsCount</b></div>
+                        <div><span>Проверок рёбер:</span> <b>@Model.DijkstraResult?.TotalEdgeChecks</b></div>
+                        <div><span>Релаксаций:</span> <b>@Model.DijkstraResult?.SuccessfulRelaxations</b></div>
+                    </div>
+
+                    <div class="policy-box">
+                        @if (Model.DijkstraResult?.PathPolicies != null) {
+                            foreach(var p in Model.DijkstraResult.PathPolicies) { <div>@p</div> }
+                        }
+                    </div>
+                }
+                else {
+                     <div style="text-align:center; padding:40px; color:#999;">
+                        @(Model.InputEdges.Any() ? "Не рассчитан (возможно, есть отрицательные веса)" : "Ожидание расчёта...")
+                     </div>
+                }
+            </div>
+
+        </div>
     </div>
 </body>
 </html>

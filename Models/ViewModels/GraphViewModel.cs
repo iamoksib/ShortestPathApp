@@ -10,9 +10,18 @@ namespace ShortestPathApp.ViewModels
         public int Source { get; set; } = 1;
         public int Target { get; set; } = 100;
         public int? VertexCount { get; set; }
-        public BellmanFordResult Result { get; set; }
-        public List<int> ShortestPathVertices { get; set; } = new();
+        
+        // Результаты двух алгоритмов
+        public BellmanFordResult BellmanResult { get; set; }
+        public BellmanFordResult DijkstraResult { get; set; }
+        
+        public List<int> BellmanPath { get; set; } = new();
+        public List<int> DijkstraPath { get; set; } = new();
+        
         public string ErrorMessage { get; set; }
-        public string GraphSvg { get; set; } = "";
+        
+        // SVG для отрисовки
+        public string BellmanSvg { get; set; } = "";
+        public string DijkstraSvg { get; set; } = "";
     }
 }
