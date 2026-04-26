@@ -1,0 +1,87 @@
+﻿@model ShortestPathApp.ViewModels.GraphViewModel
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Bellman-Ford | MVC</title>
+    <style>
+        :root { --bg: #000; --fg: #fff; --border: #888; --muted: #555; }
+        * { box-sizing: border-box; }
+        body { background: var(--bg); color: var(--fg); font-family: 'Courier New', monospace; margin: 0; padding: 20px; line-height: 1.4; }
+        .container { max-width: 1100px; margin: 0 auto; }
+        h1, h2 { border-bottom: 1px solid var(--border); padding-bottom: 6px; margin-top: 30px; }
+        .form-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin: 15px 0; }
+        label { font-weight: bold; min-width: 120px; }
+        input, textarea, select, button {
+            background: var(--bg); color: var(--fg); border: 1px solid var(--border);
+            padding: 8px 12px; font-family: inherit; font-size: 14px;
+        }
+        button { cursor: pointer; font-weight: bold; transition: 0.2s; }
+        button:hover { background: var(--fg); color: var(--bg); }
+        textarea { width: 100%; min-height: 80px; resize: vertical; }
+        .error { border: 1px solid #f00; color: #f00; padding: 10px; margin: 10px 0; background: #1a0000; }
+        .graph-box { border: 1px solid var(--border); overflow: auto; max-height: 600px; background: #000; }
+        .policy-list { border: 1px solid var(--border); padding: 10px; max-height: 250px; overflow-y: auto; background: #0a0a0a; }
+        .path-info { color: var(--fg); font-weight: bold; margin: 10px 0; font-size: 1.1em; }
+        .note { color: var(--muted); font-size: 0.9em; margin-top: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Алгоритм Беллмана-Форда</h1>
+        <form method="post" asp-controller="Home" asp-action="Calculate">
+            <div class="form-row">
+                <label>Генерация:</label>
+                <input type="number" name="VertexCount" placeholder="100, 1000, 10000" min="2" value="@(Model.VertexCount)" />
+                <button type="submit" name="action" value="Generate">⚡ Сгенерировать</button>
+            </div>
+            <div class="form-row">
+                <label>Старт / Цель:</label>
+                <input type="number" name="Source" value="1" style="width:60px" />
+                <span>→</span>
+                <input type="number" name="Target" value="@(Model.Target)" style="width:60px" />
+            </div>
+            <div class="form-row" style="flex-direction:column; align-items:flex-start;">
+                <label>Рёбра (From,To,Weight):</label>
+                <textarea name="RawEdges">@Model.RawEdges</textarea>
+                <span class="note">Каждое ребро с новой строки. Граф автоматически считается неориентированным.</span>
+            </div>
+            <button type="submit" name="action" value="Calculate">🧮 Вычислить наикратчайший путь</button>
+        </form>
+
+        @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+        {
+            <div class="error">@Model.ErrorMessage</div>
+        }
+
+        @if (!string.IsNullOrEmpty(Model.GraphSvg))
+        {
+            <h2>📊 Визуализация графа</h2>
+            <div class="graph-box">@Html.Raw(Model.GraphSvg)</div>
+
+            @if (Model.ShortestPathVertices.Any())
+            {
+                <div class="path-info">
+                    🛤️ Наикратчайший путь: @string.Join(" → ", Model.ShortestPathVertices) 
+                    (вес: @Model.Result?.Distances[Model.Target])
+                </div>
+            }
+
+            <h2>📜 Политики путей (из вершины @Model.Source)</h2>
+            <div class="policy-list">
+                @if (Model.Result?.PathPolicies != null)
+                {
+                    foreach (var p in Model.Result.PathPolicies)
+                    {
+                        <div style="padding:2px 0; border-bottom:1px dashed #333;">@p</div>
+                    }
+                }
+            </div>
+        }
+    </div>
+</body>
+</html>
